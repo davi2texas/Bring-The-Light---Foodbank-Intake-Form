@@ -64,52 +64,59 @@ def show_privacy_notice():
 
 def show_lookup_section(df):
     st.markdown("## 🔍 Lookup Existing Submission")
-    with st.form("lookup_form"):
-        phone = st.text_input("Enter contact number to search", placeholder="e.g. 469-505-9068 or 4695059068")
-        submitted = st.form_submit_button("Search")
-        if submitted:
-            phone_clean = normalize_phone(phone)
-            df["Phone_clean"] = df["Phone"].apply(normalize_phone)
-            match = df[df["Phone_clean"] == phone_clean]
-            if not match.empty:
-                st.success("Match found:")
-                st.write(match.drop(columns=["Phone_clean"]))
-                st.info(f"Total submissions for this contact: {match.shape[0]}")
-                today = datetime.now().strftime('%Y-%m-%d')
-                already_submitted = match[match["Timestamp"].str.startswith(today)]
-                if already_submitted.empty:
-                    arrival_mode = st.radio("How did you arrive today?", ["Walking", "Driving"], key="lookup_arrival_mode")
-                    if st.button("Log Submission for Today"):
-                        new_record = match.iloc[-1].copy()
-                        new_record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        new_record["Arrival Mode"] = arrival_mode
-                        df_new = pd.DataFrame([new_record.drop(labels=["Phone_clean"])]).reset_index(drop=True)
-                        df_all = pd.concat([df.drop(columns=["Phone_clean"]), df_new], ignore_index=True)
-                        save_submissions(df_all)
-                        st.success("Submission logged for today!")
-                        st.experimental_rerun()
-                else:
-                    st.warning("Submission for today already logged for this contact.")
-                # Option to remove submission by admin
-                st.markdown("---")
-                st.markdown("### Remove a Submission (Admin Only)")
-                remove_index = st.number_input("Enter row index to remove (see leftmost column above)", min_value=0, max_value=len(match)-1, step=1)
-                remove_pw = st.text_input("Admin password to remove", type="password", key="remove_pw")
-                if st.button("Remove Submission"):
-                    if remove_pw == "light2025":
-                        global_index = match.index[remove_index]
-                        df_removed = df.drop(global_index).reset_index(drop=True)
-                        save_submissions(df_removed)
-                        st.success(f"Submission at index {remove_index} removed.")
-                        st.experimental_rerun()
-                    else:
-                        st.error("Incorrect admin password.")
+    phone = st.text_input("Enter contact number to search", placeholder="e.g. 469-505-9068 or 4695059068")
+    phone_clean = normalize_phone(phone)
+    df["Phone_clean"] = df["Phone"].apply(normalize_phone)
+    match = df[df["Phone_clean"] == phone_clean]
+    if not match.empty:
+        st.success("Match found:")
+        st.write(match.drop(columns=["Phone_clean"]))
+        st.info(f"Total submissions for this contact: {match.shape[0]}")
+        today = datetime.now().strftime('%Y-%m-%d')
+        already_submitted = match[match["Timestamp"].str.startswith(today)]
+        if already_submitted.empty:
+            arrival_mode = st.radio("How did you arrive today?", ["Walking", "Driving"], key="lookup_arrival_mode")
+            if st.button("Log Submission for Today"):
+                new_record = match.iloc[-1].copy()
+                new_record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                new_record["Arrival Mode"] = arrival_mode
+                df_new = pd.DataFrame([new_record.drop(labels=["Phone_clean"])]).reset_index(drop=True)
+                df_all = pd.concat([df.drop(columns=["Phone_clean"]), df_new], ignore_index=True)
+                save_submissions(df_all)
+                st.success("Submission logged for today!")
+                st.experimental_rerun()
+        else:
+            st.warning("Submission for today already logged for this contact.")
+        # Option to remove submission by admin
+        st.markdown("---")
+        st.markdown("### Remove a Submission (Admin Only)")
+        remove_index = st.number_input("Enter row index to remove (see leftmost column above)", min_value=0, max_value=len(match)-1, step=1)
+        remove_pw = st.text_input("Admin password to remove", type="password", key="remove_pw")
+        if st.button("Remove Submission"):
+            if remove_pw == "light2025":
+                global_index = match.index[remove_index]
+                df_removed = df.drop(global_index).reset_index(drop=True)
+                save_submissions(df_removed)
+                st.success(f"Submission at index {remove_index} removed.")
+                st.experimental_rerun()
             else:
-                st.warning("No match found for that contact number.")
+                st.error("Incorrect admin password.")
+    elif phone:
+        st.warning("No match found for that contact number.")
 
 def show_submission_form(df):
     st.markdown("## 📝 New Intake Submission")
     with st.form("submission_form"):
+        phone = st.text_input("Contact number (e.g. 555-555-1234)", key="phone")
+        # Check if phone already exists
+        phone_clean = normalize_phone(phone)
+        df["Phone_clean"] = df["Phone"].apply(normalize_phone)
+        already_exists = not df[df["Phone_clean"] == phone_clean].empty
+        if already_exists:
+            st.warning("This phone number already exists in the records. Please use the Lookup section to log a submission.")
+            st.write(df[df["Phone_clean"] == phone_clean].drop(columns=["Phone_clean"]))
+            st.stop()
+        # Continue with new intake if not found
         household = st.number_input("Household size", min_value=1, key="household")
         male_adults = st.number_input("Male adults", min_value=0, key="male_adults")
         male_ages = st.text_input("Ages of male adults (comma-separated)", key="male_ages")
@@ -120,7 +127,6 @@ def show_submission_form(df):
         school_levels = st.text_input("School(s) children attend (No school, Pre-K, Elementary, Middle or High School)", key="school_levels")
         zip_code = st.text_input("Zip code", key="zip_code")
         referral = st.text_input("How did you hear about us?", key="referral")
-        phone = st.text_input("Contact number (e.g. 555-555-1234)", key="phone")
         email = st.text_input("Your e-mail address", key="email")
         arrival_mode = st.radio("How did you arrive today?", ["Walking", "Driving"], key="arrival_mode")
 
@@ -131,12 +137,6 @@ def show_submission_form(df):
             if errors:
                 for err in errors:
                     st.error(err)
-                return
-
-            match = df[(df["Phone"] == phone) | (df["Email"] == email)]
-            if not match.empty:
-                st.warning("A submission with this phone or email already exists.")
-                st.write(match)
                 return
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -157,7 +157,7 @@ def show_submission_form(df):
                 "Arrival Mode": arrival_mode
             }], columns=COLUMNS)
 
-            df_all = pd.concat([df, new_data], ignore_index=True)
+            df_all = pd.concat([df.drop(columns=["Phone_clean"]), new_data], ignore_index=True)
             save_submissions(df_all)
             st.success("Submission saved!")
 
