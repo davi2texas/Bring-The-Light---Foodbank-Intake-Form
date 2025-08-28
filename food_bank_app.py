@@ -68,6 +68,8 @@ def show_lookup_section(df):
             if not match.empty:
                 st.success("Match found:")
                 st.write(match)
+                # Show count of submissions for this phone
+                st.info(f"Total submissions for this contact: {match.shape[0]}")
             else:
                 st.warning("No match found for that contact number.")
 
@@ -179,19 +181,26 @@ def show_update_section(df):
 
 def show_admin_download(df):
     st.markdown("## 🔐 Admin Access")
-    with st.form("admin_form"):
-        password = st.text_input("Enter admin password", type="password")
-        access = st.form_submit_button("Access Download")
+    password = st.text_input("Enter admin password", type="password")
+    access = st.button("Access Download")
 
-        if access and password == "light2025":
-            csv_data = df.to_csv(index=False)
-            st.download_button("Download CSV", csv_data, file_name=f"submissions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
-            # Show today's submission count
-            today = datetime.now().strftime('%Y-%m-%d')
-            todays_count = df[df["Timestamp"].str.startswith(today)].shape[0]
-            st.info(f"Forms submitted today: {todays_count}")
-        elif access and password:
-            st.error("Incorrect password.")
+    if access and password == "light2025":
+        csv_data = df.to_csv(index=False)
+        st.download_button("Download CSV", csv_data, file_name=f"submissions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+        # Show today's submission count
+        today = datetime.now().strftime('%Y-%m-%d')
+        todays_count = df[df["Timestamp"].str.startswith(today)].shape[0]
+        st.info(f"Forms submitted today: {todays_count}")
+        # Show submissions by date (e.g., Saturdays)
+        df['date'] = pd.to_datetime(df['Timestamp'], errors='coerce').dt.date
+        df['weekday'] = pd.to_datetime(df['Timestamp'], errors='coerce').dt.day_name()
+        saturdays = df[df['weekday'] == 'Saturday']
+        sat_counts = saturdays.groupby('date').size()
+        if not sat_counts.empty:
+            st.markdown("### Saturday Submission Counts")
+            st.write(sat_counts)
+    elif access and password:
+        st.error("Incorrect password.")
 
 # ------------------ Main App Logic ------------------
 
