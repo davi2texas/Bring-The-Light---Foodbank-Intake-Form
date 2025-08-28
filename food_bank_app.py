@@ -9,7 +9,7 @@ from datetime import datetime
 CSV_FILE = "submissions.csv"
 COLUMNS = [
     "Timestamp", "Household", "Male Adults", "Male Ages", "Female Adults", "Female Ages",
-    "Kids School", "Kids Ages", "Zip", "Referral", "Phone", "Email"
+    "Kids School", "Kids Ages", "Zip", "Referral", "Phone", "Email", "Arrival Mode"
 ]
 
 # ------------------ Utilities ------------------
@@ -64,7 +64,6 @@ def show_lookup_section(df):
         phone = st.text_input("Enter contact number to search", placeholder="e.g. 555-555-1234")
         submitted = st.form_submit_button("Search")
         if submitted:
-            # Strip spaces from input and CSV for robust matching
             phone_clean = phone.strip()
             df["Phone_clean"] = df["Phone"].astype(str).str.strip()
             match = df[df["Phone_clean"] == phone_clean]
@@ -72,8 +71,24 @@ def show_lookup_section(df):
                 st.success("Match found:")
                 st.write(match.drop(columns=["Phone_clean"]))
                 st.info(f"Total submissions for this contact: {match.shape[0]}")
+                # Log submission for today if not already submitted
+                today = datetime.now().strftime('%Y-%m-%d')
+                already_submitted = match[match["Timestamp"].str.startswith(today)]
+                if already_submitted.empty:
+                    arrival_mode = st.radio("How did you arrive today?", ["Walking", "Driving"], key="lookup_arrival_mode")
+                    if st.button("Log Submission for Today"):
+                        # Copy last record, update timestamp
+                        new_record = match.iloc[-1].copy()
+                        new_record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        new_record["Arrival Mode"] = arrival_mode
+                        df_new = pd.DataFrame([new_record.drop(labels=["Phone_clean"])]).reset_index(drop=True)
+                        df_all = pd.concat([df.drop(columns=["Phone_clean"]), df_new], ignore_index=True)
+                        save_submissions(df_all)
+                        st.success("Submission logged for today!")
+                        st.experimental_rerun()
+                else:
+                    st.warning("Submission for today already logged for this contact.")
             else:
-                # Try partial match
                 partial = df[df["Phone_clean"].str.contains(phone_clean, na=False)]
                 if not partial.empty:
                     st.warning("No exact match, but similar records found:")
@@ -95,6 +110,7 @@ def show_submission_form(df):
         referral = st.text_input("How did you hear about us?", key="referral")
         phone = st.text_input("Contact number (e.g. 555-555-1234)", key="phone")
         email = st.text_input("Your e-mail address", key="email")
+        arrival_mode = st.radio("How did you arrive today?", ["Walking", "Driving"], key="arrival_mode")
 
         submitted = st.form_submit_button("Submit")
 
@@ -116,7 +132,7 @@ def show_submission_form(df):
                 "Timestamp": timestamp, "Household": household, "Male Adults": male_adults,
                 "Male Ages": male_ages, "Female Adults": female_adults, "Female Ages": female_ages,
                 "Kids School": kids_school, "Kids Ages": kids_ages, "Zip": zip_code,
-                "Referral": referral, "Phone": phone, "Email": email
+                "Referral": referral, "Phone": phone, "Email": email, "Arrival Mode": arrival_mode
             }])
 
             df_all = pd.concat([df, new_data], ignore_index=True)
