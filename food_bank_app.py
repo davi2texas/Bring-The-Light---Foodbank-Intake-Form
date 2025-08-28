@@ -74,11 +74,23 @@ with st.form("new_submission_form"):
         st.success("Submission saved!")
 
         # 🔄 Reset form fields
-        for key in [
-            "household", "male_adults", "male_ages", "female_adults", "female_ages",
-            "kids_school", "kids_ages", "zip_code", "referral", "phone", "email"
-        ]:
-            st.session_state[key] = ""
+        
+        reset_values = {
+            "household": 1,
+            "male_adults": 0,
+            "male_ages": "",
+            "female_adults": 0,
+            "female_ages": "",
+            "kids_school": "",
+            "kids_ages": "",
+            "zip_code": "",
+            "referral": "",
+            "phone": "",
+            "email": ""
+        }
+
+        for key, value in reset_values.items():
+            st.session_state[key] = value
 
 st.markdown("---")
 
