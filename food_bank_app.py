@@ -53,6 +53,10 @@ def reset_form():
         st.session_state[key] = value
     del st.session_state["reset_form"]
 
+def normalize_phone(phone):
+    # Remove all non-digit characters
+    return ''.join(filter(str.isdigit, str(phone)))
+
 # ------------------ UI Sections ------------------
 
 def show_privacy_notice():
@@ -61,23 +65,21 @@ def show_privacy_notice():
 def show_lookup_section(df):
     st.markdown("## 🔍 Lookup Existing Submission")
     with st.form("lookup_form"):
-        phone = st.text_input("Enter contact number to search", placeholder="e.g. 555-555-1234")
+        phone = st.text_input("Enter contact number to search", placeholder="e.g. 469-505-9068 or 4695059068")
         submitted = st.form_submit_button("Search")
         if submitted:
-            phone_clean = phone.strip()
-            df["Phone_clean"] = df["Phone"].astype(str).str.strip()
+            phone_clean = normalize_phone(phone)
+            df["Phone_clean"] = df["Phone"].apply(normalize_phone)
             match = df[df["Phone_clean"] == phone_clean]
             if not match.empty:
                 st.success("Match found:")
                 st.write(match.drop(columns=["Phone_clean"]))
                 st.info(f"Total submissions for this contact: {match.shape[0]}")
-                # Log submission for today if not already submitted
                 today = datetime.now().strftime('%Y-%m-%d')
                 already_submitted = match[match["Timestamp"].str.startswith(today)]
                 if already_submitted.empty:
                     arrival_mode = st.radio("How did you arrive today?", ["Walking", "Driving"], key="lookup_arrival_mode")
                     if st.button("Log Submission for Today"):
-                        # Copy last record, update timestamp
                         new_record = match.iloc[-1].copy()
                         new_record["Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         new_record["Arrival Mode"] = arrival_mode
@@ -88,13 +90,22 @@ def show_lookup_section(df):
                         st.experimental_rerun()
                 else:
                     st.warning("Submission for today already logged for this contact.")
+                # Option to remove submission by admin
+                st.markdown("---")
+                st.markdown("### Remove a Submission (Admin Only)")
+                remove_index = st.number_input("Enter row index to remove (see leftmost column above)", min_value=0, max_value=len(match)-1, step=1)
+                remove_pw = st.text_input("Admin password to remove", type="password", key="remove_pw")
+                if st.button("Remove Submission"):
+                    if remove_pw == "light2025":
+                        global_index = match.index[remove_index]
+                        df_removed = df.drop(global_index).reset_index(drop=True)
+                        save_submissions(df_removed)
+                        st.success(f"Submission at index {remove_index} removed.")
+                        st.experimental_rerun()
+                    else:
+                        st.error("Incorrect admin password.")
             else:
-                partial = df[df["Phone_clean"].str.contains(phone_clean, na=False)]
-                if not partial.empty:
-                    st.warning("No exact match, but similar records found:")
-                    st.write(partial.drop(columns=["Phone_clean"]))
-                else:
-                    st.warning("No match found for that contact number.")
+                st.warning("No match found for that contact number.")
 
 def show_submission_form(df):
     st.markdown("## 📝 New Intake Submission")
@@ -224,6 +235,12 @@ def show_admin_download(df):
         if not sat_counts.empty:
             st.markdown("### Saturday Submission Counts")
             st.write(sat_counts)
+        # Show arrival mode stats
+        if "Arrival Mode" in df.columns:
+            st.markdown("### Arrival Mode Breakdown (All Time)")
+            st.write(df["Arrival Mode"].value_counts())
+            st.markdown("### Arrival Mode Breakdown (Today)")
+            st.write(df[df["Timestamp"].str.startswith(today)]["Arrival Mode"].value_counts())
     elif access and password:
         st.error("Incorrect password.")
 
