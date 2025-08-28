@@ -141,11 +141,21 @@ def show_submission_form(df):
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             new_data = pd.DataFrame([{
-                "Timestamp": timestamp, "Household": household, "Male Adults": male_adults,
-                "Male Ages": male_ages, "Female Adults": female_adults, "Female Ages": female_ages,
-                "Number of Children": number_of_children, "Kids Ages": kids_ages, "School Levels": school_levels, "Zip": zip_code,
-                "Referral": referral, "Phone": phone, "Email": email, "Arrival Mode": arrival_mode
-            }])
+                "Timestamp": timestamp,
+                "Household": household,
+                "Male Adults": male_adults,
+                "Male Ages": male_ages,
+                "Female Adults": female_adults,
+                "Female Ages": female_ages,
+                "Number of Children": number_of_children,
+                "Kids Ages": kids_ages,
+                "School Levels": school_levels,
+                "Zip": zip_code,
+                "Referral": referral,
+                "Phone": phone,
+                "Email": email,
+                "Arrival Mode": arrival_mode
+            }], columns=COLUMNS)
 
             df_all = pd.concat([df, new_data], ignore_index=True)
             save_submissions(df_all)
