@@ -64,14 +64,22 @@ def show_lookup_section(df):
         phone = st.text_input("Enter contact number to search", placeholder="e.g. 555-555-1234")
         submitted = st.form_submit_button("Search")
         if submitted:
-            match = df[df["Phone"] == phone]
+            # Strip spaces from input and CSV for robust matching
+            phone_clean = phone.strip()
+            df["Phone_clean"] = df["Phone"].astype(str).str.strip()
+            match = df[df["Phone_clean"] == phone_clean]
             if not match.empty:
                 st.success("Match found:")
-                st.write(match)
-                # Show count of submissions for this phone
+                st.write(match.drop(columns=["Phone_clean"]))
                 st.info(f"Total submissions for this contact: {match.shape[0]}")
             else:
-                st.warning("No match found for that contact number.")
+                # Try partial match
+                partial = df[df["Phone_clean"].str.contains(phone_clean, na=False)]
+                if not partial.empty:
+                    st.warning("No exact match, but similar records found:")
+                    st.write(partial.drop(columns=["Phone_clean"]))
+                else:
+                    st.warning("No match found for that contact number.")
 
 def show_submission_form(df):
     st.markdown("## 📝 New Intake Submission")
