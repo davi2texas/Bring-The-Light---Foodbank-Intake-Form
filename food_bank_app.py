@@ -109,7 +109,7 @@ with st.form("new_submission_form"):
         # ✅ Guarded rerun to prevent AttributeError
         if "reset_form" not in st.session_state:
             st.session_state["reset_form"] = True
-            st.experimental_rerun()
+            st.rerun()
 
 st.markdown("---")
 
