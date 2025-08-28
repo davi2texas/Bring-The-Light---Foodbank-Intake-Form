@@ -4,11 +4,30 @@ from datetime import datetime
 
 st.title("Bring the Light – Food Bank Intake Form")
 
+# 🔄 Reset logic before rendering form
+if "reset_form" in st.session_state:
+    reset_values = {
+        "household": 1,
+        "male_adults": 0,
+        "male_ages": "",
+        "female_adults": 0,
+        "female_ages": "",
+        "kids_school": "",
+        "kids_ages": "",
+        "zip_code": "",
+        "referral": "",
+        "phone": "",
+        "email": ""
+    }
+    for key, value in reset_values.items():
+        st.session_state[key] = value
+    del st.session_state["reset_form"]
+
 # 🔍 Lookup Section
 st.markdown("## 🔍 Lookup Existing Submission")
 with st.form("lookup_form"):
     st.subheader("Look up by Phone Number")
-    lookup_phone = st.text_input("Enter phone number to search", key="lookup_phone")
+    lookup_phone = st.text_input("Enter contact number to search", key="lookup_phone", placeholder="e.g. 555-1234")
     search = st.form_submit_button("Search")
 
     if search:
@@ -35,21 +54,21 @@ with st.form("new_submission_form"):
     st.subheader("Fill Out Household Details")
 
     st.markdown("### 👨‍👩‍👧 Household Info")
-    household = st.number_input("How many people in your household?", min_value=1, key="household")
-    male_adults = st.number_input("How many male adults?", min_value=0, key="male_adults")
-    male_ages = st.text_input("Male adult ages (comma-separated)", key="male_ages")
-    female_adults = st.number_input("How many female adults?", min_value=0, key="female_adults")
-    female_ages = st.text_input("Female adult ages (comma-separated)", key="female_ages")
+    household = st.number_input("Household size", min_value=1, key="household")
+    male_adults = st.number_input("Male adults", min_value=0, key="male_adults")
+    male_ages = st.text_input("Ages of male adults (comma-separated)", key="male_ages")
+    female_adults = st.number_input("Female adults", min_value=0, key="female_adults")
+    female_ages = st.text_input("Ages of female adults (comma-separated)", key="female_ages")
 
     st.markdown("### 🧒 Children Info")
-    kids_school = st.text_input("Kids' school(s)", key="kids_school")
-    kids_ages = st.text_input("Kids' ages (comma-separated)", key="kids_ages")
+    kids_school = st.text_input("School(s) children attend", key="kids_school")
+    kids_ages = st.text_input("Children's ages (comma-separated)", key="kids_ages")
 
     st.markdown("### 📬 Contact Info")
     zip_code = st.text_input("Zip code", key="zip_code")
     referral = st.text_input("How did you hear about us?", key="referral")
-    phone = st.text_input("Phone number", key="phone")
-    email = st.text_input("Email", key="email")
+    phone = st.text_input("Contact number", key="phone", placeholder="e.g. 555-1234")
+    email = st.text_input("Your e-mail address", key="email", placeholder="e.g. name@example.com")
 
     submitted = st.form_submit_button("Submit")
 
@@ -73,26 +92,9 @@ with st.form("new_submission_form"):
         df.to_csv("submissions.csv", mode='a', header=False, index=False)
         st.success("Submission saved!")
 
-        # 🔄 Reset form fields
-        
-        reset_values = {
-            "household": 1,
-            "male_adults": 0,
-            "male_ages": "",
-            "female_adults": 0,
-            "female_ages": "",
-            "kids_school": "",
-            "kids_ages": "",
-            "zip_code": "",
-            "referral": "",
-            "phone": "",
-            "email": ""
-        }
-
-        for key, value in reset_values.items():
-            st.session_state[key] = value
-        st.experimental_rerun
-        
+        # ✅ Trigger reset on rerun
+        st.session_state["reset_form"] = True
+        st.experimental_rerun()
 
 st.markdown("---")
 
@@ -101,7 +103,7 @@ st.markdown("## ✏️ Update Existing Submission")
 with st.form("update_form"):
     st.subheader("Search and Edit Submission")
 
-    update_phone = st.text_input("Enter phone number to update", key="update_phone")
+    update_phone = st.text_input("Enter contact number to update", key="update_phone", placeholder="e.g. 555-1234")
     find = st.form_submit_button("Find Submission")
 
     if find:
