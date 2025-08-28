@@ -9,7 +9,7 @@ from datetime import datetime
 CSV_FILE = "submissions.csv"
 COLUMNS = [
     "Timestamp", "Household", "Male Adults", "Male Ages", "Female Adults", "Female Ages",
-    "Kids School", "Kids Ages", "Zip", "Referral", "Phone", "Email", "Arrival Mode"
+    "Kids School", "School Levels", "Kids Ages", "Zip", "Referral", "Phone", "Email", "Arrival Mode"
 ]
 
 # ------------------ Utilities ------------------
@@ -47,7 +47,7 @@ def is_duplicate(df, phone, email):
 def reset_form():
     reset_values = {
         "household": 1, "male_adults": 0, "male_ages": "", "female_adults": 0, "female_ages": "",
-        "kids_school": "", "kids_ages": "", "zip_code": "", "referral": "", "phone": "", "email": ""
+        "number_of_children": 0, "kids_school": "", "school_levels": [], "kids_ages": "", "zip_code": "", "referral": "", "phone": "", "email": ""
     }
     for key, value in reset_values.items():
         st.session_state[key] = value
@@ -104,7 +104,9 @@ def show_submission_form(df):
         male_ages = st.text_input("Ages of male adults (comma-separated)", key="male_ages")
         female_adults = st.number_input("Female adults", min_value=0, key="female_adults")
         female_ages = st.text_input("Ages of female adults (comma-separated)", key="female_ages")
+        number_of_children = st.number_input("Number of children", min_value=0, key="number_of_children")
         kids_school = st.text_input("School(s) children attend", key="kids_school")
+        school_levels = st.multiselect("School level(s) children attend", ["Pre-K", "Elementary", "Middle", "High School", "No School"], key="school_levels")
         kids_ages = st.text_input("Children's ages (comma-separated)", key="kids_ages")
         zip_code = st.text_input("Zip code", key="zip_code")
         referral = st.text_input("How did you hear about us?", key="referral")
@@ -131,7 +133,7 @@ def show_submission_form(df):
             new_data = pd.DataFrame([{
                 "Timestamp": timestamp, "Household": household, "Male Adults": male_adults,
                 "Male Ages": male_ages, "Female Adults": female_adults, "Female Ages": female_ages,
-                "Kids School": kids_school, "Kids Ages": kids_ages, "Zip": zip_code,
+                "Number of Children": number_of_children, "Kids School": kids_school, "School Levels": ', '.join(school_levels), "Kids Ages": kids_ages, "Zip": zip_code,
                 "Referral": referral, "Phone": phone, "Email": email, "Arrival Mode": arrival_mode
             }])
 
