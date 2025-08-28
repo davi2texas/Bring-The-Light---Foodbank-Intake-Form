@@ -1,54 +1,152 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
-st.title("Food Bank Intake Form")
+st.title("Bring the Light – Food Bank Intake Form")
 
-st.subheader("🔍 Lookup Existing Submission by Phone Number")
+# 🔍 Lookup Section
+st.markdown("## 🔍 Lookup Existing Submission")
+with st.form("lookup_form"):
+    st.subheader("Look up by Phone Number")
+    lookup_phone = st.text_input("Enter phone number to search", key="lookup_phone")
+    search = st.form_submit_button("Search")
 
-lookup_phone = st.text_input("Enter phone number to search")
+    if search:
+        try:
+            df_existing = pd.read_csv("submissions.csv", header=None)
+            df_existing.columns = [
+                "Timestamp", "Household", "Male Adults", "Male Ages", "Female Adults", "Female Ages",
+                "Kids School", "Kids Ages", "Zip", "Referral", "Phone", "Email"
+            ]
+            match = df_existing[df_existing["Phone"] == lookup_phone]
+            if not match.empty:
+                st.success("Match found:")
+                st.write(match)
+            else:
+                st.warning("No match found for that phone number.")
+        except FileNotFoundError:
+            st.info("No submissions yet.")
 
-if st.button("Search"):
-    try:
-        df_existing = pd.read_csv("submissions.csv", header=None)
-        df_existing.columns = [
-            "Household", "Male Adults", "Male Ages", "Female Adults", "Female Ages",
-            "Kids School", "Kids Ages", "Zip", "Referral", "Phone", "Email"
-        ]
-        match = df_existing[df_existing["Phone"] == lookup_phone]
-        if not match.empty:
-            st.success("Match found:")
-            st.write(match)
-        else:
-            st.warning("No match found for that phone number.")
-    except FileNotFoundError:
-        st.info("No submissions yet.")
+st.markdown("---")
 
-household = st.number_input("How many people in your household?", min_value=1)
-male_adults = st.number_input("How many male adults?", min_value=0)
-male_ages = st.text_input("Male adult ages (comma-separated)")
-female_adults = st.number_input("How many female adults?", min_value=0)
-female_ages = st.text_input("Female adult ages (comma-separated)")
-kids_school = st.text_input("Kids' school(s)")
-kids_ages = st.text_input("Kids' ages (comma-separated)")
-zip_code = st.text_input("Zip code")
-referral = st.text_input("How did you hear about us?")
-phone = st.text_input("Phone number")
-email = st.text_input("Email")
+# 📝 New Submission Section
+st.markdown("## 📝 New Intake Submission")
+with st.form("new_submission_form"):
+    st.subheader("Fill Out Household Details")
 
-if st.button("Submit"):
-    data = {
-        "Household": household,
-        "Male Adults": male_adults,
-        "Male Ages": male_ages,
-        "Female Adults": female_adults,
-        "Female Ages": female_ages,
-        "Kids School": kids_school,
-        "Kids Ages": kids_ages,
-        "Zip": zip_code,
-        "Referral": referral,
-        "Phone": phone,
-        "Email": email
-    }
-    df = pd.DataFrame([data])
-    df.to_csv("submissions.csv", mode='a', header=False, index=False)
-    st.success("Submission saved!")
+    st.markdown("### 👨‍👩‍👧 Household Info")
+    household = st.number_input("How many people in your household?", min_value=1, key="household")
+    male_adults = st.number_input("How many male adults?", min_value=0, key="male_adults")
+    male_ages = st.text_input("Male adult ages (comma-separated)", key="male_ages")
+    female_adults = st.number_input("How many female adults?", min_value=0, key="female_adults")
+    female_ages = st.text_input("Female adult ages (comma-separated)", key="female_ages")
+
+    st.markdown("### 🧒 Children Info")
+    kids_school = st.text_input("Kids' school(s)", key="kids_school")
+    kids_ages = st.text_input("Kids' ages (comma-separated)", key="kids_ages")
+
+    st.markdown("### 📬 Contact Info")
+    zip_code = st.text_input("Zip code", key="zip_code")
+    referral = st.text_input("How did you hear about us?", key="referral")
+    phone = st.text_input("Phone number", key="phone")
+    email = st.text_input("Email", key="email")
+
+    submitted = st.form_submit_button("Submit")
+
+    if submitted:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        data = {
+            "Timestamp": timestamp,
+            "Household": household,
+            "Male Adults": male_adults,
+            "Male Ages": male_ages,
+            "Female Adults": female_adults,
+            "Female Ages": female_ages,
+            "Kids School": kids_school,
+            "Kids Ages": kids_ages,
+            "Zip": zip_code,
+            "Referral": referral,
+            "Phone": phone,
+            "Email": email
+        }
+        df = pd.DataFrame([data])
+        df.to_csv("submissions.csv", mode='a', header=False, index=False)
+        st.success("Submission saved!")
+
+        # 🔄 Reset form fields
+        for key in [
+            "household", "male_adults", "male_ages", "female_adults", "female_ages",
+            "kids_school", "kids_ages", "zip_code", "referral", "phone", "email"
+        ]:
+            st.session_state[key] = ""
+
+st.markdown("---")
+
+# ✏️ Update Section
+st.markdown("## ✏️ Update Existing Submission")
+with st.form("update_form"):
+    st.subheader("Search and Edit Submission")
+
+    update_phone = st.text_input("Enter phone number to update", key="update_phone")
+    find = st.form_submit_button("Find Submission")
+
+    if find:
+        try:
+            df = pd.read_csv("submissions.csv", header=None)
+            df.columns = [
+                "Timestamp", "Household", "Male Adults", "Male Ages", "Female Adults", "Female Ages",
+                "Kids School", "Kids Ages", "Zip", "Referral", "Phone", "Email"
+            ]
+            match = df[df["Phone"] == update_phone]
+
+            if not match.empty:
+                st.success("Submission found. You can now edit the fields below.")
+                st.subheader("🔧 Edit Submission Details")
+                index = match.index[0]
+
+                st.markdown("### 👨‍👩‍👧 Household Info")
+                household = st.number_input("Household", value=int(match.at[index, "Household"]), min_value=1)
+                male_adults = st.number_input("Male Adults", value=int(match.at[index, "Male Adults"]), min_value=0)
+                male_ages = st.text_input("Male Ages", value=match.at[index, "Male Ages"])
+                female_adults = st.number_input("Female Adults", value=int(match.at[index, "Female Adults"]), min_value=0)
+                female_ages = st.text_input("Female Ages", value=match.at[index, "Female Ages"])
+
+                st.markdown("### 🧒 Children Info")
+                kids_school = st.text_input("Kids School", value=match.at[index, "Kids School"])
+                kids_ages = st.text_input("Kids Ages", value=match.at[index, "Kids Ages"])
+
+                st.markdown("### 📬 Contact Info")
+                zip_code = st.text_input("Zip", value=match.at[index, "Zip"])
+                referral = st.text_input("Referral", value=match.at[index, "Referral"])
+                phone = st.text_input("Phone", value=match.at[index, "Phone"])
+                email = st.text_input("Email", value=match.at[index, "Email"])
+
+                update = st.form_submit_button("Update Submission")
+
+                if update:
+                    df.at[index, "Timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    df.at[index, "Household"] = household
+                    df.at[index, "Male Adults"] = male_adults
+                    df.at[index, "Male Ages"] = male_ages
+                    df.at[index, "Female Adults"] = female_adults
+                    df.at[index, "Female Ages"] = female_ages
+                    df.at[index, "Kids School"] = kids_school
+                    df.at[index, "Kids Ages"] = kids_ages
+                    df.at[index, "Zip"] = zip_code
+                    df.at[index, "Referral"] = referral
+                    df.at[index, "Phone"] = phone
+                    df.at[index, "Email"] = email
+
+                    df.to_csv("submissions.csv", index=False, header=False)
+
+                    if phone.strip():
+                        st.success(f"Submission for {phone} updated successfully!")
+                    else:
+                        st.success("Submission updated successfully!")
+            else:
+                st.warning("No submission found for that phone number.")
+        except FileNotFoundError:
+            st.info("No submissions yet.")
+
+st.markdown("---")
+st.caption("Thank you for serving with care. Every submission helps us meet real needs with dignity.")
