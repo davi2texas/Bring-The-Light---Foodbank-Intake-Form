@@ -95,8 +95,10 @@ def show_submission_form(df):
                     st.error(err)
                 return
 
-            if is_duplicate(df, phone, email):
+            match = df[(df["Phone"] == phone) | (df["Email"] == email)]
+            if not match.empty:
                 st.warning("A submission with this phone or email already exists.")
+                st.write(match)
                 return
 
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -184,6 +186,10 @@ def show_admin_download(df):
         if access and password == "light2025":
             csv_data = df.to_csv(index=False)
             st.download_button("Download CSV", csv_data, file_name=f"submissions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+            # Show today's submission count
+            today = datetime.now().strftime('%Y-%m-%d')
+            todays_count = df[df["Timestamp"].str.startswith(today)].shape[0]
+            st.info(f"Forms submitted today: {todays_count}")
         elif access and password:
             st.error("Incorrect password.")
 
