@@ -26,7 +26,7 @@ if "reset_form" in st.session_state:
 # 🔍 Lookup Section
 st.markdown("## 🔍 Lookup Existing Submission")
 with st.form("lookup_form"):
-    st.subheader("Look up by Phone Number")
+    st.subheader("Look up by Contact Number")
     lookup_phone = st.text_input("Enter contact number to search", key="lookup_phone", placeholder="e.g. 555-1234")
     search = st.form_submit_button("Search")
 
@@ -42,7 +42,7 @@ with st.form("lookup_form"):
                 st.success("Match found:")
                 st.write(match)
             else:
-                st.warning("No match found for that phone number.")
+                st.warning("No match found for that contact number.")
         except FileNotFoundError:
             st.info("No submissions yet.")
 
@@ -65,10 +65,24 @@ with st.form("new_submission_form"):
     kids_ages = st.text_input("Children's ages (comma-separated)", key="kids_ages")
 
     st.markdown("### 📬 Contact Info")
+
+    # 🚫 Autofill-resistant inputs using custom HTML
+    st.markdown("""
+        <input type="text" name="phone" placeholder="Contact number (e.g. 555-1234)" autocomplete="off"
+        style="width: 100%; padding: 0.5em; margin-bottom: 1em; border: 1px solid #ccc; border-radius: 4px;">
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+        <input type="email" name="email" placeholder="Your e-mail address" autocomplete="off"
+        style="width: 100%; padding: 0.5em; margin-bottom: 1em; border: 1px solid #ccc; border-radius: 4px;">
+    """, unsafe_allow_html=True)
+
+    # Hidden Streamlit inputs to capture values manually if needed
+    phone = st.text_input("Phone (manual entry)", key="phone", label_visibility="collapsed")
+    email = st.text_input("Email (manual entry)", key="email", label_visibility="collapsed")
+
     zip_code = st.text_input("Zip code", key="zip_code")
     referral = st.text_input("How did you hear about us?", key="referral")
-    phone = st.text_input("Contact number", key="phone", placeholder="e.g. 555-1234")
-    email = st.text_input("Your e-mail address", key="email", placeholder="e.g. name@example.com")
 
     submitted = st.form_submit_button("Submit")
 
@@ -92,9 +106,10 @@ with st.form("new_submission_form"):
         df.to_csv("submissions.csv", mode='a', header=False, index=False)
         st.success("Submission saved!")
 
-        # ✅ Trigger reset on rerun
-        st.session_state["reset_form"] = True
-        st.experimental_rerun()
+        # ✅ Guarded rerun to prevent AttributeError
+        if "reset_form" not in st.session_state:
+            st.session_state["reset_form"] = True
+            st.experimental_rerun()
 
 st.markdown("---")
 
@@ -160,7 +175,7 @@ with st.form("update_form"):
                     else:
                         st.success("Submission updated successfully!")
             else:
-                st.warning("No submission found for that phone number.")
+                st.warning("No submission found for that contact number.")
         except FileNotFoundError:
             st.info("No submissions yet.")
 
