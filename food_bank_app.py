@@ -57,6 +57,26 @@ def normalize_phone(phone):
     # Remove all non-digit characters
     return ''.join(filter(str.isdigit, str(phone)))
 
+def repair_csv_alignment():
+    # Read raw CSV lines
+    with open(CSV_FILE, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    fixed_rows = []
+    for line in lines:
+        row = [x.strip() for x in line.strip().split(',')]
+        # If row length doesn't match, pad or trim
+        if len(row) < len(COLUMNS):
+            row += [''] * (len(COLUMNS) - len(row))
+        elif len(row) > len(COLUMNS):
+            row = row[:len(COLUMNS)]
+        fixed_rows.append(row)
+    # Write fixed CSV
+    with open(CSV_FILE, 'w', encoding='utf-8') as f:
+        f.write(','.join(COLUMNS) + '\n')
+        for row in fixed_rows:
+            f.write(','.join(row) + '\n')
+    st.success("CSV alignment repair complete. Please reload the app.")
+
 # ------------------ UI Sections ------------------
 
 def show_privacy_notice():
@@ -64,7 +84,7 @@ def show_privacy_notice():
 
 def show_lookup_section(df):
     st.markdown("## 🔍 Lookup Existing Submission")
-    phone = st.text_input("Enter contact number to search", placeholder="e.g. 469-505-9068 or 4695059068")
+    phone = st.text_input("Enter phone number (e.g. 555-555-5000 or 5555555000)")
     phone_clean = normalize_phone(phone)
     df["Phone_clean"] = df["Phone"].apply(normalize_phone)
     match = df[df["Phone_clean"] == phone_clean]
@@ -245,12 +265,52 @@ def show_admin_download(df):
         if not sat_counts.empty:
             st.markdown("### Saturday Submission Counts")
             st.write(sat_counts)
-        # Show arrival mode stats
-        if "Arrival Mode" in df.columns:
-            st.markdown("### Arrival Mode Breakdown (All Time)")
-            st.write(df["Arrival Mode"].value_counts())
-            st.markdown("### Arrival Mode Breakdown (Today)")
-            st.write(df[df["Timestamp"].str.startswith(today)]["Arrival Mode"].value_counts())
+        # View logs for today
+        st.markdown("---")
+        st.markdown("### View Today's Logs")
+        todays_logs = df[df["Timestamp"].str.startswith(today)]
+        if not todays_logs.empty:
+            st.write(todays_logs)
+        else:
+            st.info("No logs for today.")
+        # Filter logs by date
+        st.markdown("---")
+        st.markdown("### Filter Logs by Date")
+        filter_date = st.date_input("Select a date to view logs", key="admin_filter_date")
+        if filter_date:
+            filter_str = filter_date.strftime('%Y-%m-%d')
+            filtered_logs = df[df["Timestamp"].str.startswith(filter_str)]
+            if not filtered_logs.empty:
+                st.write(filtered_logs)
+            else:
+                st.info(f"No logs found for {filter_str}.")
+        # Search logs by any field
+        st.markdown("---")
+        st.markdown("### Search Logs by Any Field")
+        search_term = st.text_input("Enter search term (any value)", key="admin_search")
+        if search_term:
+            mask = df.apply(lambda row: search_term.lower() in row.astype(str).str.lower().to_string(), axis=1)
+            results = df[mask]
+            if not results.empty:
+                st.write(results)
+                # Option to delete a log by index
+                del_index = st.number_input("Enter row index to delete (see leftmost column above)", min_value=0, max_value=len(results)-1, step=1, key="admin_del_index")
+                del_pw = st.text_input("Admin password to delete", type="password", key="admin_del_pw")
+                if st.button("Delete Log"):
+                    if del_pw == "light2025":
+                        global_index = results.index[del_index]
+                        df_removed = df.drop(global_index).reset_index(drop=True)
+                        save_submissions(df_removed)
+                        st.success(f"Log at index {del_index} deleted.")
+                        st.experimental_rerun()
+                    else:
+                        st.error("Incorrect admin password.")
+            else:
+                st.warning("No matching logs found.")
+        # Option to repair CSV alignment
+        st.markdown("---")
+        if st.button("Repair CSV Alignment (One-Time)"):
+            repair_csv_alignment()
     elif access and password:
         st.error("Incorrect password.")
 
