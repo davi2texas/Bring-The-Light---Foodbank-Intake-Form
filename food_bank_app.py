@@ -91,6 +91,8 @@ with st.form("new_submission_form"):
 
         for key, value in reset_values.items():
             st.session_state[key] = value
+        st.experimental_rerun
+        
 
 st.markdown("---")
 
